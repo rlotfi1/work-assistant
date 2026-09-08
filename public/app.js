@@ -83,7 +83,11 @@ const I = {
     chat: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2.8 4.2A1.4 1.4 0 0 1 4.2 2.8h7.6a1.4 1.4 0 0 1 1.4 1.4v4.6a1.4 1.4 0 0 1-1.4 1.4H6.5L3.5 13V10.2h-.7a1.4 1.4 0 0 1-1.4-1.4z" stroke-linejoin="round"/></svg>'
 };
 
-// ── persistence ─────────────────────────────────────────────────────────────
+// ── Supabase client + auth ──────────────────────────────────────────────────
+const SB = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+let USER = null, SESSION = null;
+
+// ── persistence (Supabase: one JSON row per user, isolated by Row-Level Security)
 let saveTimer = null;
 function setSave(state) {
     const f = $('#railFoot'), l = $('#saveLabel');
@@ -97,31 +101,43 @@ function save() {
     setSave('saving');
     savePending = true;
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(doSave, 350);
+    saveTimer = setTimeout(doSave, 400);
 }
 async function doSave() {
     clearTimeout(saveTimer); savePending = false;
+    if (!USER) return;
     try {
-        const r = await fetch('/api/state', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(STATE) });
-        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const { error } = await SB.from('assistant_state').upsert(
+            { user_id: USER.id, data: STATE, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+        if (error) throw error;
         setSave('saved');
     } catch (e) { console.warn('save failed', e); setSave('error'); }
 }
-// Flush any pending debounced save when the tab is closing/refreshing so nothing is lost.
+// Flush a pending save when the tab closes/refreshes — a direct REST call with
+// keepalive, carrying the signed-in user's token so RLS still applies.
 function flushSave() {
-    if (!savePending) return;
+    if (!savePending || !USER) return;
     clearTimeout(saveTimer); savePending = false;
-    try { fetch('/api/state', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(STATE), keepalive: true }); } catch (e) { /* best effort */ }
+    try {
+        const token = (SESSION && SESSION.access_token) || window.SUPABASE_ANON_KEY;
+        fetch(window.SUPABASE_URL + '/rest/v1/assistant_state?on_conflict=user_id', {
+            method: 'POST', keepalive: true,
+            headers: { 'Content-Type': 'application/json', 'apikey': window.SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + token, 'Prefer': 'resolution=merge-duplicates' },
+            body: JSON.stringify({ user_id: USER.id, data: STATE, updated_at: new Date().toISOString() })
+        });
+    } catch (e) { /* best effort */ }
 }
 async function load() {
+    if (!USER) return;
     try {
-        const r = await fetch('/api/state');
-        const j = await r.json();
-        STATE.tasks = Array.isArray(j.tasks) ? j.tasks : [];
-        STATE.meetings = Array.isArray(j.meetings) ? j.meetings : [];
-        STATE.logs = Array.isArray(j.logs) ? j.logs : [];
+        const { data, error } = await SB.from('assistant_state').select('data').eq('user_id', USER.id).maybeSingle();
+        if (error) throw error;
+        const s = (data && data.data) || {};
+        STATE.tasks = Array.isArray(s.tasks) ? s.tasks : [];
+        STATE.meetings = Array.isArray(s.meetings) ? s.meetings : [];
+        STATE.logs = Array.isArray(s.logs) ? s.logs : [];
         setSave('saved');
-    } catch (e) { console.warn('load failed', e); }
+    } catch (e) { console.warn('load failed', e); setSave('error'); }
 }
 
 // ── nav ─────────────────────────────────────────────────────────────────────
@@ -685,23 +701,66 @@ function checkReminders() {
     });
 }
 
+// ── auth gate ───────────────────────────────────────────────────────────────
+function showAuthGate() {
+    const gate = $('#authGate'); if (gate) gate.hidden = false;
+    $('#authSub').textContent = 'Sign in to your workspace';
+    $('#authFields').hidden = false;
+    const form = $('#authForm'), err = $('#authErr'), btn = $('#authBtn');
+    form.onsubmit = async e => {
+        e.preventDefault();
+        const email = $('#authEmail').value.trim(), password = $('#authPass').value;
+        if (!email || !password) return;
+        btn.disabled = true; btn.textContent = 'Signing in…'; err.hidden = true;
+        const { data, error } = await SB.auth.signInWithPassword({ email, password });
+        if (error) { err.textContent = error.message || 'Sign in failed.'; err.hidden = false; btn.disabled = false; btn.textContent = 'Sign in'; $('#authPass').select(); return; }
+        SESSION = data.session;
+        await startApp(data.user);
+        btn.disabled = false; btn.textContent = 'Sign in';
+    };
+    setTimeout(() => { const el = $('#authEmail'); if (el) el.focus(); }, 40);
+}
+function hideAuthGate() { const g = $('#authGate'); if (g) g.hidden = true; }
+function showAccount(user) {
+    const box = $('#railAcct'); if (!box) return;
+    box.hidden = false;
+    const em = $('#raEmail'); em.textContent = user.email || 'Signed in'; em.title = user.email || '';
+    $('#raSignout').onclick = async () => { flushSave(); await SB.auth.signOut(); location.reload(); };
+}
+
+// Bring the app to life once a user is authenticated.
+let _appStarted = false, _remindTimer = null;
+async function startApp(user) {
+    USER = user;
+    hideAuthGate();
+    showAccount(user);
+    await load();
+    renderNav();
+    renderView();
+    checkReminders();
+    if (!_remindTimer) _remindTimer = setInterval(checkReminders, 5 * 60 * 1000);
+    _appStarted = true;
+}
+
 // ── boot ────────────────────────────────────────────────────────────────────
 async function boot() {
     $('#menuToggle').onclick = () => $('#rail').classList.toggle('open');
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') $('#overlay').classList.remove('open');
-        if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') { e.preventDefault(); $('#capInput').focus(); }
+        if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') { e.preventDefault(); const c = $('#capInput'); if (c) c.focus(); }
     });
     DAY = todayISO();
     window.addEventListener('beforeunload', flushSave);
     window.addEventListener('pagehide', flushSave);
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushSave(); });
     buildCapture();
-    await load();
-    renderNav();
-    renderView();
-    checkReminders();
-    setInterval(checkReminders, 5 * 60 * 1000);
+    // Auth: resume an existing session, or show the login gate.
+    let session = null;
+    try { session = (await SB.auth.getSession()).data.session; } catch (e) { console.warn('getSession failed', e); }
+    SESSION = session;
+    SB.auth.onAuthStateChange((_evt, s) => { SESSION = s; if (!s && _appStarted) location.reload(); });
+    if (session && session.user) await startApp(session.user);
+    else showAuthGate();
 }
 function emptyState(emoji, title, body) {
     return `<div class="empty"><div class="e-emoji">${emoji}</div><h3>${title}</h3><div>${body}</div></div>`;

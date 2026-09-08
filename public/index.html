@@ -320,6 +320,33 @@
         @media (prefers-reduced-motion: reduce) { * { animation-duration: .001ms !important; transition-duration: .001ms !important; } }
         :focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
 
+        /* Account row in the rail */
+        .rail-acct { padding: 10px 18px; border-top: 1px solid var(--line); display: flex; align-items: center; gap: 10px; }
+        .rail-acct .ra-email { flex: 1; min-width: 0; font-family: var(--mono); font-size: .68rem; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .rail-acct .ra-signout { border: 1px solid var(--line-2); background: transparent; color: var(--ink-3); border-radius: 7px; padding: 4px 9px; font-size: .72rem; font-weight: 600; cursor: pointer; transition: all .13s; }
+        .rail-acct .ra-signout:hover { border-color: var(--urgent); color: var(--urgent); background: var(--urgent-soft); }
+
+        /* Login gate */
+        .auth-gate { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 24px; background: var(--bg);
+            background-image: radial-gradient(1000px 520px at 82% -12%, rgba(242,164,68,.10), transparent 62%), radial-gradient(760px 460px at -6% 110%, rgba(72,201,226,.06), transparent 60%); }
+        .auth-gate[hidden] { display: none; }
+        .auth-card { width: 100%; max-width: 360px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 30px 28px 26px; box-shadow: var(--shadow-lg); position: relative; overflow: hidden; }
+        .auth-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--teal), transparent 55%); }
+        .auth-eyebrow { font-family: var(--mono); font-size: .58rem; letter-spacing: .2em; text-transform: uppercase; color: var(--teal-d); }
+        .auth-brand { font-family: var(--display); font-weight: 600; font-size: 1.5rem; letter-spacing: .01em; display: flex; align-items: center; gap: 9px; margin-top: 4px; }
+        .auth-brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 0 4px rgba(242,164,68,.14), 0 0 12px 1px rgba(242,164,68,.55); }
+        .auth-sub { color: var(--ink-3); font-size: .84rem; margin: 8px 0 18px; }
+        .auth-fields[hidden] { display: none; }
+        .auth-fields label { display: block; font-family: var(--mono); font-size: .62rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); margin: 12px 2px 6px; }
+        .auth-fields input { width: 100%; border: 1px solid var(--line-2); background: var(--surface-alt); color: var(--ink); border-radius: var(--r-sm); padding: 11px 13px; font-size: .92rem; transition: border-color .15s, box-shadow .15s; }
+        .auth-fields input:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px var(--teal-soft); }
+        .auth-fields #authBtn { width: 100%; margin-top: 20px; border: 0; border-radius: var(--r-sm); padding: 12px; font-weight: 700; font-size: .92rem; color: #17120a; cursor: pointer;
+            background: linear-gradient(180deg, var(--teal), var(--teal-d)); box-shadow: 0 0 20px -5px rgba(242,164,68,.55); transition: transform .12s, opacity .15s; }
+        .auth-fields #authBtn:hover { transform: translateY(-1px); }
+        .auth-fields #authBtn:disabled { opacity: .6; cursor: default; transform: none; }
+        .auth-err { margin-top: 14px; font-size: .82rem; color: var(--urgent); background: var(--urgent-soft); border: 1px solid rgba(255,95,86,.3); border-radius: 9px; padding: 9px 12px; }
+        .auth-err[hidden] { display: none; }
+
         /* Narrow screens: let the capture row wrap so the Add button never clips */
         @media (max-width: 720px) {
             .cap-row { flex-wrap: wrap; }
@@ -337,6 +364,10 @@
                 <h1><span class="dot"></span> Assistant</h1>
             </div>
             <nav class="nav" id="nav"></nav>
+            <div class="rail-acct" id="railAcct" hidden>
+                <span class="ra-email" id="raEmail" title=""></span>
+                <button class="ra-signout" id="raSignout" title="Sign out">Sign out</button>
+            </div>
             <div class="rail-foot" id="railFoot"><span class="sdot"></span><span id="saveLabel">Saved</span></div>
         </aside>
         <main class="main">
@@ -358,6 +389,26 @@
     </div>
     <div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
     <div class="toast" id="toast"></div>
-    <script src="app.js?v=20260908h"></script>
+
+    <!-- Login gate — covers the app until signed in -->
+    <div class="auth-gate" id="authGate">
+        <form class="auth-card" id="authForm">
+            <div class="auth-eyebrow">Personal Work Assistant</div>
+            <div class="auth-brand"><span class="dot"></span> Assistant</div>
+            <div class="auth-sub" id="authSub">Checking your session…</div>
+            <div class="auth-fields" id="authFields" hidden>
+                <label for="authEmail">Email</label>
+                <input type="email" id="authEmail" autocomplete="username" required>
+                <label for="authPass">Password</label>
+                <input type="password" id="authPass" autocomplete="current-password" required>
+                <button type="submit" id="authBtn">Sign in</button>
+                <div class="auth-err" id="authErr" hidden></div>
+            </div>
+        </form>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js?v=20260908i"></script>
+    <script src="app.js?v=20260908i"></script>
 </body>
 </html>

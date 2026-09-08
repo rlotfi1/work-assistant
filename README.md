@@ -1,29 +1,32 @@
 # Work Assistant
 
-A personal, local-first app to capture your work so nothing gets lost — tasks,
-email follow-ups, and action items assigned to you during meetings. Tracks **who
-requested** each task, due dates, and priority.
+A personal app to capture your work so nothing gets lost — tasks, email follow-ups,
+and action items assigned to you during meetings. Tracks **who requested** each
+task, due dates, and priority.
 
 ![Work Assistant — the Today view](docs/today.png)
 
-Built with a plain Node/Express + vanilla-JS stack (no build step), and dressed in
-a warm-dark "flight deck" theme.
+A no-build static site (vanilla JS) backed by **Supabase** for storage + login,
+dressed in a warm-dark "flight deck" theme, and deployable to **Vercel**.
 
-## Run it
+## Run it locally
 
 ```bash
 cd Assistant
 npm install      # first time only
-npm start        # http://localhost:3020
+npm start        # serves the static site at http://localhost:3020
 ```
 
-`npm run dev` runs it with nodemon (auto-reload).
+It talks to Supabase, so it needs the connection set in `public/config.js` and an
+internet connection. `npm run dev` runs it with nodemon.
 
 ## Where your data lives
 
-One JSON file, `data/assistant.json` (override with the `ASSISTANT_DATA_DIR`
-environment variable). No account, no cloud — it stays on your machine until you
-choose to deploy it.
+Your tasks, meetings and logs are stored in **Supabase** (Postgres) as one JSON
+row per account, isolated by **Row-Level Security** so each login only ever sees
+its own data. Connection settings live in `public/config.js` — the Supabase
+Project URL and `anon` key, both safe to ship (RLS is what protects the data;
+never put the `service_role` key there).
 
 ## How to use it
 
@@ -65,6 +68,33 @@ automatically.
 ### Reminders
 On the **Today** view, click *Enable reminders* to get a browser notification for
 overdue / due-today tasks while the app is open in a tab.
+
+## Deploy (Vercel + Supabase)
+
+**1. Supabase — create the table.** In the SQL Editor, run:
+
+```sql
+create table if not exists public.assistant_state (
+  user_id    uuid primary key references auth.users(id) on delete cascade,
+  data       jsonb not null default '{"tasks":[],"meetings":[],"logs":[]}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+alter table public.assistant_state enable row level security;
+create policy "own state - read"   on public.assistant_state for select using (auth.uid() = user_id);
+create policy "own state - insert" on public.assistant_state for insert with check (auth.uid() = user_id);
+create policy "own state - update" on public.assistant_state for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+```
+
+**2. Supabase — create your login.** Authentication → Users → **Add user**
+(email + password; tick **Auto Confirm User**). Sign-up is not exposed in the app,
+so accounts are created here.
+
+**3. Set the connection.** Put your Project URL + `anon` key in `public/config.js`
+(Supabase → Project Settings → API).
+
+**4. Vercel — deploy.** Import this GitHub repo. `vercel.json` already configures
+it as a static site (no build) serving `public/`, so just click Deploy. Your app
+goes live at `<project>.vercel.app`, and every `git push` redeploys it.
 
 ## Roadmap (not built yet)
 - Microsoft 365 sync (auto-pull flagged Outlook emails + calendar meetings via
