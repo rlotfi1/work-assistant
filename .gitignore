@@ -1,0 +1,19 @@
+# dependencies
+node_modules/
+
+# personal data — your tasks, logs & meetings live here; never publish it
+data/
+
+# env & secrets
+.env
+.env.*
+
+# logs
+*.log
+npm-debug.log*
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
