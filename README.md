@@ -4,8 +4,10 @@ A personal, local-first app to capture your work so nothing gets lost — tasks,
 email follow-ups, and action items assigned to you during meetings. Tracks **who
 requested** each task, due dates, and priority.
 
-Built with the same stack as the Turbo Dashboard (Node/Express + vanilla-JS SPA)
-so it can be deployed the same way later.
+![Work Assistant — the Today view](docs/today.png)
+
+Built with a plain Node/Express + vanilla-JS stack (no build step), and dressed in
+a warm-dark "flight deck" theme.
 
 ## Run it
 
@@ -30,19 +32,21 @@ The bar at the top adds a task in one line. Type naturally and use tokens:
 
 | Token | Means | Example |
 |-------|-------|---------|
-| `@name` | Requested by | `@Selva` or `@[Selvendiran A.]` |
-| `#tag` | Project / tag | `#RBAC` |
+| `@name` | Requested by | `@Alex` or `@[Alex Rivera]` |
+| `#tag` | Project / tag | `#Reporting` |
 | `!level` | Priority | `!urgent` `!high` `!low` |
 | `^when` | Due date | `^today` `^fri` `^+3d` `^2026-09-30` |
 
-Example: `Send AHB compliance report @Selva #FinOps !high ^fri`
+Example: `Prepare Q3 review deck @Alex #Reporting !high ^fri`
 Press **Enter**. (Press **/** anywhere to jump to the capture bar.)
 
 Switch the toggle to **Follow-up** to log an email that needs a reply — paste the
-Outlook message link so you can jump back to it.
+message link so you can jump back to it.
 
 ### Views
-- **Today** — overdue, due today, in-progress, and flagged items. One focused list.
+- **Today** — overdue, due today, in-progress, and an inbox of undated captures.
+- **My day** — a timeline of what you did each day: free-form activity notes (with
+  optional durations like `(45m)`) plus every task you completed, on one tape.
 - **Board** — To do / Doing / Done, drag cards between columns.
 - **All tasks** — full list with search and filters (status, priority, source,
   requestor, project).
@@ -51,6 +55,13 @@ Outlook message link so you can jump back to it.
   as it's handed to you; they flow straight into your tasks with the meeting and
   requestor attached.
 
+![Work Assistant — the My day tracker](docs/my-day.png)
+
+### Task activity log
+Open any task (click it, or the ✎ pencil) to edit every field and keep a running
+**activity log** — post comments as work progresses; status changes are recorded
+automatically.
+
 ### Reminders
 On the **Today** view, click *Enable reminders* to get a browser notification for
 overdue / due-today tasks while the app is open in a tab.
@@ -58,4 +69,8 @@ overdue / due-today tasks while the app is open in a tab.
 ## Roadmap (not built yet)
 - Microsoft 365 sync (auto-pull flagged Outlook emails + calendar meetings via
   Microsoft Graph) — needs an Entra app registration.
-- Deploy to Azure App Service behind login (like turbo.sodexotech.com).
+- Deploy behind login.
+
+## License
+
+[MIT](LICENSE) © 2026 Reda Lotfi

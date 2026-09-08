@@ -168,7 +168,7 @@ function buildCapture() {
                 <button data-mode="email">${I.email} Follow-up</button>
             </div>
             <div class="cap-input-wrap">
-                <input class="cap-input" id="capInput" autocomplete="off" placeholder="Add a task…  try  @Selva  #RBAC  !high  ^fri">
+                <input class="cap-input" id="capInput" autocomplete="off" placeholder="Add a task…  try  @Alex  #Reporting  !high  ^fri">
             </div>
             <button class="cap-add" id="capAdd">Add</button>
         </div>
@@ -181,7 +181,7 @@ function buildCapture() {
         CAP.mode = b.dataset.mode;
         $('#capSeg').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
         extra.style.display = CAP.mode === 'email' ? 'flex' : 'none';
-        input.placeholder = CAP.mode === 'email' ? 'Email follow-up — what to do / the subject…  @Sender  ^tue' : 'Add a task…  try  @Selva  #RBAC  !high  ^fri';
+        input.placeholder = CAP.mode === 'email' ? 'Email follow-up — what to do / the subject…  @Sender  ^tue' : 'Add a task…  try  @Alex  #Reporting  !high  ^fri';
         input.focus();
     });
     input.oninput = () => renderCapHint(input.value);
@@ -404,7 +404,7 @@ function renderDay() {
     const done = STATE.tasks.filter(t => dayOf(t.doneAt) === DAY).map(t => ({ kind: 'done', at: t.doneAt, id: t.id, text: t.title, task: t }));
     const items = [...notes, ...done].sort((a, b) => String(b.at).localeCompare(String(a.at)));
     const logger = isToday ? `<div class="day-log">
-        <input id="dayInput" class="day-input" autocomplete="off" placeholder="What did you just work on?  e.g. “Reviewed AHB compliance with Bob (30m)”">
+        <input id="dayInput" class="day-input" autocomplete="off" placeholder="What did you just work on?  e.g. “Reviewed the Q3 report with Alex (30m)”">
         <button class="btn primary" id="dayAdd">${I.plus} Log</button>
     </div>` : `<div class="day-readonly">Reviewing a past day — switch to <b>Today</b> to log activity.</div>`;
     const time = at => { try { return new Date(at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } };
